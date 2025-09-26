@@ -1,0 +1,19 @@
+# requirements.txt
+
+onnxruntime
+pyodbc
+anemoi
+aiohttp_socks
+gymnasium
+earth2studio
+torch
+numpy
+scikit-learn
+microsoft-aurora
+
+# Earth2Studio optional extras
+earth2studio[pangu]
+earth2studio[aurora]
+earth2studio[graphcast]
+earth2studio[fcn]
+earth2studio[aifs]

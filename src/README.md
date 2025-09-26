@@ -1,6 +1,12 @@
 # 首先需要外网使用earth2studio下载文件到~/.cache/earth2studio文件夹，里面有模型和数据集
 
-# 其次使用 bash.sh安装相应包
+# 其次使用
+
+```
+pip install -r requirements.txt -i https://mirrors.aliyun.com/pypi/simple/
+
+```
+安装相应包
 
 # 文件说明
 
