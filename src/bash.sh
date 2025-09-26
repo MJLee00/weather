@@ -1,0 +1,1 @@
+pip install "earth2studio" "torch" "numpy" "gymnasium" "scikit-learn" "earth2studio[pangu]" "earth2studio[aurora]" "earth2studio[fcn3]" "earth2studio[AIFS]" -i https://mirrors.aliyun.com/pypi/simple/
