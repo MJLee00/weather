@@ -97,24 +97,34 @@ class WeatherEnv(gym.Env):
    
         forecasts = {}
         individual_mses = np.zeros(NUM_BASE_MODELS, dtype=np.float32)
-        
-        ground_truth_time = self.current_time + self.lead_time
-        ground_truth_data, _ = self.get_cur_weather(ground_truth_time)
-        ground_truth_data = ground_truth_data.cpu().numpy()
- 
+        ground_truth_data_list = []
+        for i in range(PREDICT_TIME):
+            ground_truth_time = self.current_time + self.lead_time * (i + 1)
+            ground_truth_data, _ = self.get_cur_weather(ground_truth_time)
+            ground_truth_data = ground_truth_data.cpu().numpy()
+            ground_truth_data_list.append(ground_truth_data)
+        ground_truth_data = np.concatenate(ground_truth_data_list, axis=1)
+        ground_truth_data = ground_truth_data[:,:,:,:-1,:]
         with torch.no_grad():
             for i, (name, model) in enumerate(self.base_models.items()):
+                if name != 'Aurora':
+                    model = model.to(DEVICE)
                 io = ZarrBackend()
-                io = run.deterministic([self.current_time], PREDICT_TIME, model, self.data_source, io)
-                arrays = [io[VARIABLES[i]] for i in range(len(VARIABLES))]
+                io = run.deterministic([self.current_time], PREDICT_TIME, model, self.data_source, io, device=DEVICE)
+                
+                arrays = [io[VARIABLES[i]][:,1:,:,:] for i in range(len(VARIABLES))]
                 forecast = np.stack(arrays, axis=2) #io[VARIABLES][0, PREDICT_TIME]
      
                 forecasts[name] = forecast
-                
-                # 计算每个模型的MSE
+                if name != 'Aurora':
+                    forecast = forecast[:,:,:,:-1,:]
+                    
+                # 计算每个模型的MSE 
                 mse = mean_squared_error(ground_truth_data.flatten(), forecast.flatten())
                 rmse = np.sqrt(mse)
-                individual_mses[i] = rmse
+                individual_mses[i] = rmse   
+                if name != 'Aurora':
+                    model = model.cpu()
 
         # 2. 计算加权集成预报
         ensemble_forecast = np.zeros_like(ground_truth_data)
@@ -125,8 +135,10 @@ class WeatherEnv(gym.Env):
         ensemble_mse = mean_squared_error(ground_truth_data.flatten(), ensemble_forecast.flatten())
         ensemble_rmse = np.sqrt(ensemble_mse)
         reward = -ensemble_rmse
-      
-        self.current_time += self.lead_time
+
+        for i in range(PREDICT_TIME):
+            self.current_time += self.lead_time
+
         self.step_count += 1
         
         next_observation = self._get_observation(self.current_time, individual_mses)

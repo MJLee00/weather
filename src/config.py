@@ -3,12 +3,12 @@ import torch
 
 # -- Environment Configurations --
 # 从 earth2studio.data 中选择变量
-VARIABLES = ["t850","q700","z500","v925","u850"]
+VARIABLES = ["t850","z500","v925","u850"]
 # 基础天气模型列表 (从 earth2studio.models 加载)
-BASE_MODELS = ["Pangu6"] # 您可以添加更多模型，例如 "sfno"
+BASE_MODELS = ["Pangu6", "FuXi", "FengWu"] # 您可以添加更多模型，例如 "sfno" "Aurora"
 NUM_BASE_MODELS = len(BASE_MODELS)
 
-PREDICT_TIME = 0 # 此数据集是6小时一次，我们预测一天的24小时            
+PREDICT_TIME = 4 # 此数据集是6小时一次，我们预测一天的24小时            
 # 使用的数据源
 
 FORECAST_LEAD_TIME_HOURS = 6 # 预报的未来时间
