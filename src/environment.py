@@ -6,7 +6,8 @@ import torch
 import earth2studio.data as data
 from datetime import datetime, timedelta
 from earth2studio.models.auto import Package
-from sklearn.metrics import mean_squared_error
+from sklearn.metrics import mean_squared_error, mean_absolute_error
+from scipy.stats import pearsonr
 from src.config import *
 import importlib
 from earth2studio.data import DataArrayFile
@@ -16,7 +17,7 @@ from earth2studio.io import ZarrBackend
 
 class WeatherEnv(gym.Env):
     """一个为RL智能体设计的自定义天气预报环境"""
-    def __init__(self, start_date=datetime(2020, 1, 1), end_date=datetime(2020, 1, 2)):
+    def __init__(self, start_date=datetime(2020, 1, 8), end_date=datetime(2020, 6, 1)):
         super(WeatherEnv, self).__init__()
         
         # 加载数据源和基础模型
@@ -70,6 +71,34 @@ class WeatherEnv(gym.Env):
             device=DEVICE,
         )
         return weather, coords
+    
+    def calculate_detailed_metrics(self, predicted, actual):
+        """计算详细的评估指标"""
+        predicted_flat = predicted.flatten()
+        actual_flat = actual.flatten()
+        
+        # 基本指标
+        mse = mean_squared_error(actual_flat, predicted_flat)
+        rmse = np.sqrt(mse)
+        mae = mean_absolute_error(actual_flat, predicted_flat)
+        
+        # 相关系数
+        correlation, _ = pearsonr(actual_flat, predicted_flat)
+        
+        # 平均绝对百分比误差 (MAPE)
+        mape = np.mean(np.abs((actual_flat - predicted_flat) / (actual_flat + 1e-8))) * 100
+        
+        # 标准化RMSE (NRMSE)
+        nrmse = rmse / (np.max(actual_flat) - np.min(actual_flat))
+        
+        return {
+            'mse': mse,
+            'rmse': rmse,
+            'mae': mae,
+            'mape': mape,
+            'correlation': correlation,
+            'nrmse': nrmse
+        }
 
 
     def _get_observation(self, time, mses):
@@ -96,8 +125,10 @@ class WeatherEnv(gym.Env):
         """执行一个时间步"""
    
         forecasts = {}
-        individual_mses = np.zeros(NUM_BASE_MODELS, dtype=np.float32)
+        individual_metrics = {}
         ground_truth_data_list = []
+        
+        # 获取48小时的真实数据
         for i in range(PREDICT_TIME):
             ground_truth_time = self.current_time + self.lead_time * (i + 1)
             ground_truth_data, _ = self.get_cur_weather(ground_truth_time)
@@ -105,6 +136,8 @@ class WeatherEnv(gym.Env):
             ground_truth_data_list.append(ground_truth_data)
         ground_truth_data = np.concatenate(ground_truth_data_list, axis=1)
         ground_truth_data = ground_truth_data[:,:,:,:-1,:]
+        
+        # 获取各基础模型的预测
         with torch.no_grad():
             for i, (name, model) in enumerate(self.base_models.items()):
                 if name != 'Aurora':
@@ -113,40 +146,49 @@ class WeatherEnv(gym.Env):
                 io = run.deterministic([self.current_time], PREDICT_TIME, model, self.data_source, io, device=DEVICE)
                 
                 arrays = [io[VARIABLES[i]][:,1:,:,:] for i in range(len(VARIABLES))]
-                forecast = np.stack(arrays, axis=2) #io[VARIABLES][0, PREDICT_TIME]
-     
-                forecasts[name] = forecast
+                forecast = np.stack(arrays, axis=2)
                 if name != 'Aurora':
                     forecast = forecast[:,:,:,:-1,:]
-                    
-                # 计算每个模型的MSE 
-                mse = mean_squared_error(ground_truth_data.flatten(), forecast.flatten())
-                rmse = np.sqrt(mse)
-                individual_mses[i] = rmse   
+                forecasts[name] = forecast
+                
+                # 计算每个模型的详细指标
+                individual_metrics[name] = self.calculate_detailed_metrics(forecast, ground_truth_data)
+                
                 if name != 'Aurora':
-                    model = model.cpu()
+                    model = model.to('cpu')
 
-        # 2. 计算加权集成预报
+        # 计算加权集成预报
         ensemble_forecast = np.zeros_like(ground_truth_data)
         for i, name in enumerate(self.base_models.keys()):
             ensemble_forecast += action[i] * forecasts[name]
         
-        # 3. 计算集成预报的MSE和奖励
-        ensemble_mse = mean_squared_error(ground_truth_data.flatten(), ensemble_forecast.flatten())
-        ensemble_rmse = np.sqrt(ensemble_mse)
-        reward = -ensemble_rmse
+        # 计算集成预报的详细指标
+        ensemble_metrics = self.calculate_detailed_metrics(ensemble_forecast, ground_truth_data)
+        
+        # 使用RMSE作为奖励
+        reward = -ensemble_metrics['rmse']
 
+        # 更新时间
         for i in range(PREDICT_TIME):
             self.current_time += self.lead_time
 
         self.step_count += 1
         
+        # 为了兼容性，仍然提供individual_mses
+        individual_mses = np.array([individual_metrics[name]['rmse'] for name in BASE_MODELS], dtype=np.float32)
         next_observation = self._get_observation(self.current_time, individual_mses)
         
         terminated = self.step_count >= MAX_STEPS_PER_EPISODE
         truncated = False 
         
-        info = {"ensemble_mse": ensemble_mse, "individual_mses": individual_mses}
+        info = {
+            "ensemble_metrics": ensemble_metrics,
+            "individual_metrics": individual_metrics,
+            "ensemble_mse": ensemble_metrics['mse'],  # 保持兼容性
+            "individual_mses": individual_mses,  # 保持兼容性
+            "forecasts": forecasts,
+            "ground_truth": ground_truth_data
+        }
         
         return next_observation, reward, terminated, truncated, info
 

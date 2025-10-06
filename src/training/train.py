@@ -43,13 +43,13 @@ def train():
         print(f"\rEpisode {i_episode}\tAverage Score: {np.mean(scores_window):.2f}\t"
               f"Ensemble MSE: {info.get('ensemble_mse', 0):.4f}", end="")
         
-        if i_episode % 100 == 0:
+        if i_episode % UPDATE_INTERVAL == 0:
             agent.update_model()
             print(f"\rEpisode {i_episode}\tAverage Score: {np.mean(scores_window):.2f}")
             # 保存模型
             if not os.path.exists("./models"):
                 os.makedirs("./models")
-            agent.save()
+        agent.save()
             
     env.close()
     print("\nTraining complete.")
