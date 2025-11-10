@@ -91,10 +91,10 @@ class DDPGAgent:
         for target_param, local_param in zip(target_model.parameters(), local_model.parameters()):
             target_param.data.copy_(tau*local_param.data + (1.0-tau)*target_param.data)
 
-    def save(self, directory="./models"):
-        torch.save(self.actor.state_dict(), f'{directory}/actor.pth')
-        torch.save(self.critic.state_dict(), f'{directory}/critic.pth')
+    def save(self, directory="./models", ROUND=0):
+        torch.save(self.actor.state_dict(), f'{directory}/actor_{str(ROUND)}.pth')
+        torch.save(self.critic.state_dict(), f'{directory}/critic_{str(ROUND)}.pth')
 
-    def load(self, directory="./models"):
-        self.actor.load_state_dict(torch.load(f'{directory}/actor.pth'))
-        self.critic.load_state_dict(torch.load(f'{directory}/critic.pth'))
+    def load(self, directory="./models", ROUND=0):
+        self.actor.load_state_dict(torch.load(f'{directory}/actor_{str(ROUND)}.pth'))
+        self.critic.load_state_dict(torch.load(f'{directory}/critic_{str(ROUND)}.pth'))

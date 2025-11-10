@@ -1,5 +1,5 @@
 # requirements.txt
-
+# python3.12
 onnxruntime-gpu
 pyodbc
 anemoi
@@ -10,6 +10,8 @@ torch
 numpy
 scikit-learn
 microsoft-aurora
+
+
 
 # Earth2Studio optional extras
 earth2studio[pangu]

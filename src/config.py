@@ -5,9 +5,9 @@ import torch
 # 从 earth2studio.data 中选择变量
 VARIABLES = ["t850","z500","v925","u850"]
 # 基础天气模型列表 (从 earth2studio.models 加载)
-BASE_MODELS = ["Pangu6", "FuXi", "FengWu"] # 您可以添加更多模型，例如 "Aurora"
+BASE_MODELS = ["Pangu6", "FuXi", "FengWu", "Aurora"] # 您可以添加更多模型，例如 "Aurora"
 NUM_BASE_MODELS = len(BASE_MODELS)
-
+UPDATE_EPOCHS = 20
 PREDICT_TIME = 4 # 此数据集是6小时一次，我们预测48小时（8个时间步）            
 # 使用的数据源
 
@@ -20,7 +20,7 @@ CRITIC_LR = 1e-3 # Critic学习率
 GAMMA = 0.99  # 折扣因子
 TAU = 0.005 # 目标网络软更新系数
 BATCH_SIZE = 4 # 训练批次大小
-BUFFER_SIZE = int(1e5) # 经验回放池大小
+BUFFER_SIZE = 3500 # 经验回放池大小
 
 # -- Training Configurations --
 NUM_TRAINING_EPISODES = 1000 # 总训练回合数
