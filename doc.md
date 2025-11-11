@@ -4,4 +4,9 @@
 
 # bash <(wget -qO- https://xuanyuan.cloud/docker.sh)
 # sudo docker load -i my-python-env.tar
-# sudo docker run -it my-python-env:latest bash
+# sudo apt-get update
+# sudo apt-get install -y nvidia-container-toolkit
+# sudo systemctl restart docker
+# sudo docker run -it --rm --gpus all my-python-env:latest bash
+
+
