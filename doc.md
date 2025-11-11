@@ -20,5 +20,5 @@
 }
 ```
 # sudo docker run -it --rm --gpus all my-python-env:latest bash
-
+# chmod +x ./xray 
 
