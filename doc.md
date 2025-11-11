@@ -7,6 +7,18 @@
 # sudo apt-get update
 # sudo apt-get install -y nvidia-container-toolkit
 # sudo systemctl restart docker
+
+# sudo vim /etc/docker/daemon.json
+``` {
+    "default-runtime": "nvidia",
+    "runtimes": {
+        "nvidia": {
+            "path": "/usr/bin/nvidia-container-runtime",
+            "runtimeArgs": []
+        }
+    }
+}
+```
 # sudo docker run -it --rm --gpus all my-python-env:latest bash
 
 
